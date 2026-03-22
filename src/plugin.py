@@ -1,0 +1,86 @@
+from enigma import getDesktop
+from os import makedirs
+from os.path import exists, normpath
+from Components.config import config, ConfigSelection
+from Components.Harddisk import harddiskmanager
+from Plugins.Plugin import PluginDescriptor
+
+from .EmbySetup import EmbySetup, initConfig
+from .EmbyHome import E2EmbyHome
+from .Variables import EMBY_THUMB_CACHE_DIR
+from . import _
+
+initConfig()
+
+PROGRAM_NAME = _("Jellyfin Player")
+PROGRAM_DESCRIPTION = _("A client for Jellyfin server")
+
+
+class MountChoices:
+	def __init__(self):
+		choices = self.getMountChoices()
+		config.plugins.e2jellyfinclient.thumbcache_loc = ConfigSelection(choices=choices, default=self.getMountDefault(choices))
+		harddiskmanager.on_partition_list_change.append(MountChoices.__onPartitionChange)  # to update data location choices on mountpoint change
+
+	@staticmethod
+	def getMountChoices():
+		choices = []
+		for p in harddiskmanager.getMountedPartitions():
+			if exists(p.mountpoint):
+				d = normpath(p.mountpoint)
+				if p.mountpoint != "/":
+					choices.append((d, "%s %s" % (_('Persistent thumbnail cache in'), p.mountpoint)))
+		choices.sort()
+		choices.insert(0, ("/tmp", _("Temporary thumbnail cache")))
+		return choices
+
+	@staticmethod
+	def getMountDefault(choices):
+		choices = {x[1]: x[0] for x in choices}
+		default = "/tmp"  # choices.get("/media/hdd") or choices.get("/media/usb") or ""
+		return default
+
+	@staticmethod
+	def __onPartitionChange(*args, **kwargs):
+		choices = MountChoices.getMountChoices()
+		config.plugins.e2jellyfinclient.thumbcache_loc.setChoices(choices=choices, default=MountChoices.getMountDefault(choices))
+
+
+MountChoices()
+
+
+def main(session, **kwargs):
+	screenwidth = getDesktop(0).size().width()
+	if screenwidth < 1920:
+		from Screens.MessageBox import MessageBox
+		session.open(MessageBox, _("E2JellyfinClient works only with FHD (1920x1080) skins. Please load FHD skin."), MessageBox.TYPE_ERROR, simple=True, timeout=20)
+		return
+	if not config.plugins.e2jellyfinclient.connectioncount.value:
+		session.open(EmbySetup)
+		return
+	session.open(E2EmbyHome)
+
+
+def startFromMainMenu(menuid):
+	if menuid != "mainmenu":
+		return []
+	return [(_("Jellyfin Player"), main, "e2_jellyfin_menu", 100)]
+
+
+def sessionstart(reason, session, **kwargs):
+	makedirs(f"/tmp{EMBY_THUMB_CACHE_DIR}", exist_ok=True)
+	if config.plugins.e2jellyfinclient.thumbcache_loc.value != "off":
+		makedirs(f"{config.plugins.e2jellyfinclient.thumbcache_loc.value}{EMBY_THUMB_CACHE_DIR}", exist_ok=True)
+
+
+def Plugins(path, **kwargs):
+	plugin = [
+		PluginDescriptor(where=PluginDescriptor.WHERE_SESSIONSTART, fnc=sessionstart, needsRestart=False),
+		PluginDescriptor(name=PROGRAM_NAME, description=PROGRAM_DESCRIPTION, where=PluginDescriptor.WHERE_PLUGINMENU, icon='plugin.png', fnc=main)
+	]
+	if config.plugins.e2jellyfinclient.add_to_extensionmenu.value:
+		plugin.append(PluginDescriptor(name=PROGRAM_NAME, description=PROGRAM_DESCRIPTION, where=PluginDescriptor.WHERE_EXTENSIONSMENU, fnc=main))
+	if config.plugins.e2jellyfinclient.add_to_mainmenu.value:
+		plugin.append(PluginDescriptor(name=PROGRAM_NAME, description=PROGRAM_DESCRIPTION, where=PluginDescriptor.WHERE_MENU, fnc=startFromMainMenu))
+
+	return plugin

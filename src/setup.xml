@@ -1,0 +1,32 @@
+<setupxml>
+	<setup key="e2jellyfinclient" title="E2JellyfinClient Setup">
+		<item level="0" text="Timeouts"></item>
+		<item level="0" text="---"></item>
+		<item level="0" text="Connection reties count" description="Specify the connection retries count.">config.plugins.e2jellyfinclient.conretries</item>
+		<item level="0" text="Connection timeout" description="Specify the timeout for connect.">config.plugins.e2jellyfinclient.con_timeout</item>
+		<item level="0" text="Connection read timeout" description="Specify the timeout for connections read operations.">config.plugins.e2jellyfinclient.read_con_timeout</item>
+		<item level="0" text="---"></item>
+		<item level="0" text="UI Settings"></item>
+		<item level="0" text="---"></item>
+		<item level="0" text="Thumb cache location" description="Specify where thumbnail cache will be storred.">config.plugins.e2jellyfinclient.thumbcache_loc</item>
+		<item level="0" text="UI scroll delay" description="Specify the delay between selection changed events.">config.plugins.e2jellyfinclient.changedelay</item>
+		<item level="0" text="Add to Main Menu" description="Add E2JellyfinClient to the Main Menu list of options.">config.plugins.e2jellyfinclient.add_to_mainmenu</item>
+		<item level="0" text="Add to Extensions Menu" description="Add E2JellyfinClient to the Extensions Menu list of options.">config.plugins.e2jellyfinclient.add_to_extensionmenu</item>
+		<item level="0" text="---"></item>
+		<item level="0" text="Player Settings"></item>
+		<item level="0" text="---"></item>
+		<item level="0" text="Playback system" description="Specify what will be the playback system. Possible choices is GStreamer/ExtePlayer3/HiPlayer.">config.plugins.e2jellyfinclient.play_system</item>
+		<item level="0" text="Encodding for non UTF-8 subtitles" description="Specify encodding that will be used to decode subtiles that are not UTF-8.">config.plugins.e2jellyfinclient.encodding_nonutf_subs</item>
+		<item level="0" text="---"></item>
+		<item level="0" text="Connections"></item>
+		<item level="0" text="---"></item>
+	</setup>
+
+	<setup key="e2embyclientconnection" title="E2JellyfinClient Connection">
+		<item level="0" text="Name" description="Name of the Remote Box (freely selectable).">self.entry.name</item>
+		<item level="0" text="URL" description="Root URL address of the Connection.">self.entry.ip</item>
+		<item level="0" text="Port" description="Port of the Connection.">self.entry.port</item>
+		<item level="0" text="User" description="User for the Connection.">self.entry.user</item>
+		<item level="0" text="Password" description="Password for the Connection.">self.entry.password</item>
+	</setup>
+</setupxml>
