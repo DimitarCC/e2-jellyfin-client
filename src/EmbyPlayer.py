@@ -117,7 +117,7 @@ class EmbyPlayer(MoviePlayer):
 		self["time_remaining_summary"] = StaticText("")
 		self.init_timer = eTimer()
 		self.init_timer.callback.append(self.__onPlayerInit)
-		if config.plugins.e2embyclient.play_system.value == "5002":
+		if config.plugins.e2jellyfinclient.play_system.value == "5002":
 			self.init_timer.start(50)
 		self.init_seek_timer = eTimer()
 		self.init_seek_timer.callback.append(self.__onPlayerInitSeek)
@@ -615,7 +615,7 @@ class EmbyPlayer(MoviePlayer):
 			if seekable is None:
 				return -1
 			res = seekable.seekTo(pts)
-			len = seekable.getLength() if config.plugins.e2embyclient.play_system.value == "5002" else [0, 1]
+			len = seekable.getLength() if config.plugins.e2jellyfinclient.play_system.value == "5002" else [0, 1]
 			if res == -1 or len[1] <= 0:
 				return -1
 			init_play_pos = int(self.init_seek_to) * 10_000_000
@@ -627,7 +627,7 @@ class EmbyPlayer(MoviePlayer):
 		if pos is not None:
 			self.init_timer.stop()
 			self.__evServiceStart()
-			self.init_seek_timer.start(100 if config.plugins.e2embyclient.play_system.value == "5002" else 10)
+			self.init_seek_timer.start(100 if config.plugins.e2jellyfinclient.play_system.value == "5002" else 10)
 
 	def __onPlayerInitSeek(self):
 		if self.is_trailer:
