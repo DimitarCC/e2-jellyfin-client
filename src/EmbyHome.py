@@ -48,9 +48,11 @@ class E2EmbyHome(NotificationalScreen):
 				<widget name="list_recent_movies_header" position="-1920,-1080" size="900,40" alphatest="blend" font="Regular;28" valign="center" halign="left" transparent="1"/>
 				<widget name="list" position="40,620" size="e-80,230" scrollbarMode="showNever" transparent="1" />
 				<widget name="list_watching" position="35,820" size="e-80,270" iconWidth="338" iconHeight="192" scrollbarMode="showNever" iconType="Thumb" transparent="1" />
-				<widget name="list_recent_movies" position="35,1150" size="e-80,426" iconWidth="232" iconHeight="330" scrollbarMode="showNever" iconType="Primary" transparent="1"/>
+		 		<widget name="list_nextup_header" position="-1920,-1080" size="900,40" alphatest="blend" font="Regular;28" valign="center" halign="left" transparent="1"/>
+				<widget name="list_nextup" position="35,1150" size="e-80,270" iconWidth="338" iconHeight="192" scrollbarMode="showNever" iconType="Thumb" transparent="1"/>
+				<widget name="list_recent_movies" position="35,1480" size="e-80,426" iconWidth="232" iconHeight="330" scrollbarMode="showNever" iconType="Primary" transparent="1"/>
 				<widget name="list_recent_tvshows_header" position="-1920,-1080" size="900,40" alphatest="blend" font="Regular;28" valign="center" halign="left" transparent="1"/>
-				<widget name="list_recent_tvshows" position="35,1600" size="e-80,426" iconWidth="232" iconHeight="330" scrollbarMode="showNever" iconType="Primary" transparent="1"/>
+				<widget name="list_recent_tvshows" position="35,1930" size="e-80,426" iconWidth="232" iconHeight="330" scrollbarMode="showNever" iconType="Primary" transparent="1"/>
 			</screen>"""]
 
 	def __init__(self, session):
@@ -102,6 +104,8 @@ class E2EmbyHome(NotificationalScreen):
 		self["list"] = EmbyList(isLibrary=True)
 		self["list_watching_header"] = Label(_("Continue watching"))
 		self["list_watching"] = EmbyList()
+		self["list_nextup_header"] = Label(_("Next up"))
+		self["list_nextup"] = EmbyList()
 		self["list_recent_movies_header"] = Label(_("Recently added movies"))
 		self["list_recent_movies"] = EmbyList()
 		self["list_recent_tvshows_header"] = Label(_("Recently added tvshows"))
@@ -119,6 +123,8 @@ class E2EmbyHome(NotificationalScreen):
 			self["list"], self["list_header"])
 		self.lists["list_watching"] = EmbyListController(
 			self["list_watching"], self["list_watching_header"])
+		self.lists["list_nextup"] = EmbyListController(
+			self["list_nextup"], self["list_nextup_header"])
 		self.lists["list_recent_movies"] = EmbyListController(
 			self["list_recent_movies"], self["list_recent_movies_header"])
 		self.lists["list_recent_tvshows"] = EmbyListController(
@@ -126,6 +132,7 @@ class E2EmbyHome(NotificationalScreen):
 
 		self["list"].onSelectionChanged.append(self.onSelectedIndexChanged)
 		self["list_watching"].onSelectionChanged.append(self.onSelectedIndexChanged)
+		self["list_nextup"].onSelectionChanged.append(self.onSelectedIndexChanged)
 		self["list_recent_movies"].onSelectionChanged.append(self.onSelectedIndexChanged)
 		self["list_recent_tvshows"].onSelectionChanged.append(self.onSelectedIndexChanged)
 
@@ -167,10 +174,12 @@ class E2EmbyHome(NotificationalScreen):
 		self.lists["list_watching"].enableSelection(self.selected_widget == "list_watching")
 		self.lists["list_recent_movies"].enableSelection(self.selected_widget == "list_recent_movies")
 		self.lists["list_recent_tvshows"].enableSelection(self.selected_widget == "list_recent_tvshows")
+		self.lists["list_nextup"].enableSelection(self.selected_widget == "list_nextup")
 		if not self.home_loaded:
 			self.lists["list_watching"].visible(False)
 			self.lists["list_recent_movies"].visible(False)
 			self.lists["list_recent_tvshows"].visible(False)
+			self.lists["list_nextup"].visible(False)
 			threads.deferToThread(self.loadHome, activeConnection)
 
 	def trigger_sel_changed_event(self):
@@ -293,8 +302,8 @@ class E2EmbyHome(NotificationalScreen):
 	def reloadSeriesWidgets(self):
 		self.last_widget_info_load_success = None
 		self.last_item_id = self[self.selected_widget].selectedItem.get("Id")
-		if "list_watching" in self.availableWidgets:
-			self.loadEmbyList(self["list_watching"], "Resume")
+		if "list_nextup" in self.availableWidgets:
+			self.loadEmbyList(self["list_nextup"], "NextUp")
 		if "list_recent_tvshows" in self.availableWidgets:
 			self.loadEmbyList(self["list_recent_tvshows"], "LastSeries", self.tvshow_libs_ids)
 		if not self[self.selected_widget].isLibrary:
@@ -451,6 +460,9 @@ class E2EmbyHome(NotificationalScreen):
 		if self.loadEmbyList(self["list_watching"], "Resume"):
 			if "list_watching" not in self.availableWidgets:
 				self.availableWidgets.append("list_watching")
+		if self.loadEmbyList(self["list_nextup"], "NextUp"):
+			if "list_nextup" not in self.availableWidgets:
+				self.availableWidgets.append("list_nextup")
 		if self.movie_libs_ids:
 			if self.loadEmbyList(self["list_recent_movies"], "LastMovies", self.movie_libs_ids):
 				if "list_recent_movies" not in self.availableWidgets:
@@ -467,6 +479,9 @@ class E2EmbyHome(NotificationalScreen):
 			if "list_watching" in self.availableWidgets:
 				self.lists["list_watching"].move(40, y).visible(True).enableSelection(self.selected_widget == "list_watching")
 				y += self.lists["list_watching"].getHeight() + 40
+			if "list_nextup" in self.availableWidgets:
+				self.lists["list_nextup"].move(40, y).visible(True).enableSelection(self.selected_widget == "list_nextup")
+				y += self.lists["list_nextup"].getHeight() + 40
 			if "list_recent_movies" in self.availableWidgets:
 				self.lists["list_recent_movies"].move(40, y).visible(True).enableSelection(self.selected_widget == "list_recent_movies")
 				y += self.lists["list_recent_movies"].getHeight() + 40
@@ -499,6 +514,18 @@ class E2EmbyHome(NotificationalScreen):
 		elif type == "LastSeries":
 			sortBy = "DateCreated"
 			includeItems = "Series&IsFolder=true&Recursive=true"
+		elif type == "NextUp":
+			items.extend(EmbyApiClient.getNextUpItems())
+			list = []
+			if items:
+				i = 0
+				for item in items:
+					played_perc = item.get("UserData", {}).get("PlayedPercentage", "0")
+					list.append((i, item, item.get('Name'), None, played_perc, True))
+					i += 1
+				widget.loadData(list)
+			return len(list) > 0
+
 		if not parent_ids:
 			items.extend(EmbyApiClient.getItems(
 				type_part, sortBy, includeItems, parent_part))

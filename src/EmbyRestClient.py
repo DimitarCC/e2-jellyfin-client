@@ -5,6 +5,7 @@ from requests.exceptions import ReadTimeout
 from secrets import choice
 from shutil import copyfile
 from urllib.parse import quote
+import random
 
 from PIL import Image
 
@@ -163,6 +164,32 @@ class EmbyRestClient():
 			ShowEmbyTimeoutNotification()
 		return items
 
+	def getItemPages(self, sortBy, includeItems, parent_part, loadFullInfo=False, limit=40, start_index=0):
+		items = {}
+		total_items = 0
+		headers = self.constructHeaders()
+		includeItemsParam = "IncludeItemTypes="
+		url = f"{self.server_root}/Users/{self.user_id}/Items?StartIndex={start_index}&Limit={limit}&SortBy={sortBy}&SortOrder=Descending&Fields=Overview,Genres,CriticRating,OfficialRating,Width,Height,CommunityRating,MediaStreams,PremiereDate,EndDate,DateCreated,Status,ChildCount{',Chapters,Taglines,People' if loadFullInfo else ''}&{includeItemsParam}{includeItems}{parent_part}"
+		has_timeout_or_error = True
+		for attempt in range(config.plugins.e2jellyfinclient.conretries.value):
+			try:
+				response = get(url, headers=headers, timeout=(config.plugins.e2jellyfinclient.con_timeout.value, config.plugins.e2jellyfinclient.read_con_timeout.value))
+				response_obj = response.content
+				res_json_obj = loads(response_obj)
+				items = res_json_obj.get('Items')
+				total_items = res_json_obj.get('TotalRecordCount')
+				has_timeout_or_error = False
+				break
+			except TimeoutError:
+				pass
+			except ReadTimeout:
+				pass
+			except:
+				break
+		if has_timeout_or_error:
+			ShowEmbyTimeoutNotification()
+		return items, total_items
+
 	def getResumableItemsForLibrary(self, library_id, library_type, limit=40):
 		items = {}
 		headers = self.constructHeaders()
@@ -172,6 +199,29 @@ class EmbyRestClient():
 		elif library_type == "tvshow":
 			include_items = "Episode"
 		url = f"{self.server_root}/Users/{self.user_id}/Items/Resume?IncludeItemTypes={include_items}&MediaTypes=Video&ParentId={library_id}&Fields=Overview,Genres,CriticRating,OfficialRating,Width,Height,CommunityRating,MediaStreams,PremiereDate,DateCreated&Limit={limit}"
+		has_timeout_or_error = True
+		for attempt in range(config.plugins.e2jellyfinclient.conretries.value):
+			try:
+				response = get(url, headers=headers, timeout=(config.plugins.e2jellyfinclient.con_timeout.value, config.plugins.e2jellyfinclient.read_con_timeout.value))
+				response_obj = response.content
+				res_json_obj = loads(response_obj)
+				items = res_json_obj.get('Items')
+				has_timeout_or_error = False
+				break
+			except TimeoutError:
+				pass
+			except ReadTimeout:
+				pass
+			except:
+				break
+		if has_timeout_or_error:
+			ShowEmbyTimeoutNotification()
+		return items
+
+	def getNextUpItems(self, limit=40):
+		items = {}
+		headers = self.constructHeaders()
+		url = f"{self.server_root}/Shows/NextUp?UserId={self.user_id}&DisableFirstEpisode=false&EnableResumable=false&Fields=Overview,Genres,CriticRating,OfficialRating,Width,Height,CommunityRating,MediaStreams,PremiereDate,DateCreated&Limit={limit}&EnableRewatching=false"
 		has_timeout_or_error = True
 		for attempt in range(config.plugins.e2jellyfinclient.conretries.value):
 			try:
@@ -484,13 +534,16 @@ class EmbyRestClient():
 			ShowEmbyTimeoutNotification()
 		return items  # sorted_items
 
-	def getRandomItemFromLibrary(self, parent_id, type, limit=2000):
+	def getRandomItemFromLibrary(self, parent_id, type):
 		includeItems = "Movie"
 		if type == "movies":
 			includeItems = "Movie&IsMovie=true&Recursive=true&Filters=IsNotFolder"
 		elif type == "tvshows":
 			includeItems = "Series&IsFolder=true&Recursive=true"
-		items = self.getItems("", "DateCreated", includeItems, f"&ParentId={parent_id}", limit)
+		items, total_items = self.getItemPages("DateCreated", includeItems, f"&ParentId={parent_id}", limit=1, start_index=0)
+		max_rand = total_items // 100
+		rand_page = random.randint(0, max_rand) if max_rand > 0 else 0
+		items, total_items = self.getItemPages("DateCreated", includeItems, f"&ParentId={parent_id}", limit=100, start_index=rand_page * 100)
 		return items and choice(items) or {}
 
 	def getRecommendedMoviesForLibrary(self, library_id, limit=40):

@@ -470,7 +470,7 @@ class E2EmbyLibrary(NotificationalScreen):
 			return
 
 		self.available_widgets = []
-		items = EmbyApiClient.getResumableItemsForLibrary(self.library_id, self.type)
+		items = EmbyApiClient.getResumableItemsForLibrary(self.library_id, self.type) if self.type == "movies" else EmbyApiClient.getNextUpItems()
 		list = []
 		if items:
 			i = 0
