@@ -16,6 +16,7 @@
 		<item level="0" text="Player Settings"></item>
 		<item level="0" text="---"></item>
 		<item level="0" text="Playback system" description="Specify what will be the playback system. Possible choices is GStreamer/ExtePlayer3/HiPlayer.">config.plugins.e2jellyfinclient.play_system</item>
+		<item level="0" text="Video codecs the receiver can decode" description="With 'All' every video is played directly. Otherwise videos with other codecs (for example HEVC on a receiver without an HEVC decoder) are converted to H.264 by the Jellyfin server.">config.plugins.e2jellyfinclient.video_codecs</item>
 		<item level="0" text="Encodding for non UTF-8 subtitles" description="Specify encodding that will be used to decode subtiles that are not UTF-8.">config.plugins.e2jellyfinclient.encodding_nonutf_subs</item>
 		<item level="0" text="---"></item>
 		<item level="0" text="Connections"></item>

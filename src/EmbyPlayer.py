@@ -51,6 +51,7 @@ class EmbyPlayer(MoviePlayer):
 		media_sources = item.get("MediaSources")
 		ref = None
 		play_session_id = ""
+		is_transcoding = False
 		if media_sources and not is_trailer:
 			media_source = media_sources[0]
 			defaultAudioIndex = media_source.get("DefaultAudioStreamIndex", -1)
@@ -58,8 +59,15 @@ class EmbyPlayer(MoviePlayer):
 			container = media_source.get("Container")
 			media_source_id = media_source.get("Id")
 			play_session_id = str(uuid4())
-			directStreamUrl = f"/videos/{item_id}/stream.{container}?Static=true&DeviceId={EmbyApiClient.device_id}&MediaSourceId={media_source_id}&PlaySessionId={play_session_id}&api_key={EmbyApiClient.access_token}"
-			url = f"{EmbyApiClient.server_root}{directStreamUrl}"
+			url = None
+			if config.plugins.e2jellyfinclient.video_codecs.value != "all":
+				url, server_play_session_id = EmbyApiClient.getTranscodingUrl(item_id, media_source_id, defaultAudioIndex, defaultSubtitleIndex)
+				is_transcoding = bool(url)
+				if url and server_play_session_id:
+					play_session_id = server_play_session_id  # the server stops the transcode when this session is reported as stopped
+			if not url:
+				directStreamUrl = f"/videos/{item_id}/stream.{container}?Static=true&DeviceId={EmbyApiClient.device_id}&MediaSourceId={media_source_id}&PlaySessionId={play_session_id}&api_key={EmbyApiClient.access_token}"
+				url = f"{EmbyApiClient.server_root}{directStreamUrl}"
 			ref = eServiceReference("%s:0:1:%x:1009:1:CCCC0000:0:0:0:%s:%s" % (config.plugins.e2jellyfinclient.play_system.value, 1111, url.replace(":", "%3a"), item_name))
 		if is_trailer and trailer_url:
 			ref = eServiceReference("%s:0:1:%x:1010:1:CCCC0000:0:0:0:%s:%s" % (config.plugins.e2jellyfinclient.play_system.value, 1111, trailer_url.replace(":", "%3a"), f"Trailer - {item_name}"))
@@ -85,6 +93,7 @@ class EmbyPlayer(MoviePlayer):
 		self.item = item or {}
 		self.chapters = []
 		self.play_session_id = play_session_id
+		self.is_transcoding = is_transcoding  # a transcoded stream has no embedded subtitles, so text ones are loaded as SRT from the server
 		self.skip_progress_update = False
 		self.current_seek_step = 0
 		self.current_pos = -1
@@ -482,7 +491,7 @@ class EmbyPlayer(MoviePlayer):
 			i = subtitlesList[-1][1] + 1
 		else:
 			i = 1
-		subtitletracks = [sub for sub in media_streams if sub.get("Type") == "Subtitle" and sub.get("IsExternal")]
+		subtitletracks = [sub for sub in media_streams if sub.get("Type") == "Subtitle" and self.isSrtSubtitle(sub)]
 		for stream in subtitletracks:
 			index = stream.get("Index")
 			subs_uri = f"{EmbyApiClient.server_root}/Videos/{item_id}/{media_source.get("Id")}/Subtitles/{index}/Stream.srt?api_key={EmbyApiClient.access_token}"
@@ -491,6 +500,9 @@ class EmbyPlayer(MoviePlayer):
 			else:
 				subtitlesList.append((2, i, 4, index, stream.get("Language"), "", self.runSubtitles, subs_uri))
 			i += 1
+
+	def isSrtSubtitle(self, stream):
+		return stream.get("IsExternal") or (self.is_transcoding and stream.get("IsTextSubtitleStream"))
 
 	def getEmbyTrackLists(self):
 		media_sources = self.item.get("MediaSources")
@@ -523,9 +535,8 @@ class EmbyPlayer(MoviePlayer):
 			sindex = next((i for i, track in enumerate(subtitletracks) if track.get("Index") == defaultSubtitleIndex), -1)
 			if sindex > -1:
 				subtitle_obj = subtitletracks[sindex]
-				isExternal = subtitle_obj.get("IsExternal")
 				sub_index_emby = subtitle_obj.get("Index")
-				if isExternal:
+				if self.isSrtSubtitle(subtitle_obj):
 					subs_uri = f"{EmbyApiClient.server_root}/Videos/{item_id}/{media_source.get("Id")}/Subtitles/{sub_index_emby}/Stream.srt?api_key={EmbyApiClient.access_token}"
 					if SUBTITLE_TUPLE_SIZE == 5:
 						subtitle = (2, sindex + 1, 4, sub_index_emby, subtitle_obj.get("Language"), self.runSubtitles, subs_uri)
