@@ -38,6 +38,8 @@ def initConfig():
 	config.plugins.e2jellyfinclient.play_system = ConfigSelection(default="4097", choices=play_system_choices)
 	subs_encoddings_choices = [("latin1", "Latin"), ("windows-1251", "Cyrillic"), ("Shift_JIS", "Japanese/日本語"), ("Big5", "Chinese (Traditional)/繁體中文"), ("GB2312", "Chinese (Simplified)/简体中文"), ("Windows-1256", "Arabic/العربية")]
 	config.plugins.e2jellyfinclient.encodding_nonutf_subs = ConfigSelection(default="latin1", choices=subs_encoddings_choices)
+	video_codecs_choices = [("all", _("All (always direct play)")), ("h264,hevc", "H.264 + HEVC"), ("h264", _("H.264 only"))]
+	config.plugins.e2jellyfinclient.video_codecs = ConfigSelection(default="all", choices=video_codecs_choices)
 	for idx in range(config.plugins.e2jellyfinclient.connectioncount.value):
 		initConnection(idx)
 

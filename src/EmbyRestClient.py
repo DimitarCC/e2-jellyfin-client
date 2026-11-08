@@ -858,6 +858,39 @@ class EmbyRestClient():
 		if has_timeout_or_error:
 			ShowEmbyTimeoutNotification()
 
+	def getDeviceProfile(self):
+		video_codecs = config.plugins.e2jellyfinclient.video_codecs.value + ",mpeg2video,mpeg4"
+		audio_codecs = "aac,ac3,eac3,mp3,mp2,dts,truehd,flac,opus,vorbis,pcm_s16le,pcm_s24le"
+		return {
+			"Name": "Enigma2",
+			"MaxStreamingBitrate": 120000000,
+			"MaxStaticBitrate": 120000000,
+			"DirectPlayProfiles": [{"Type": "Video", "Container": "mkv,mp4,m4v,mov,avi,ts,m2ts,mpegts,webm", "VideoCodec": video_codecs, "AudioCodec": audio_codecs}],
+			"TranscodingProfiles": [{"Type": "Video", "Container": "ts", "Protocol": "hls", "Context": "Streaming", "VideoCodec": "h264", "AudioCodec": "aac,ac3", "MaxAudioChannels": "6", "BreakOnNonKeyFrames": True}],
+			"SubtitleProfiles": [{"Format": fmt, "Method": "External"} for fmt in ("srt", "subrip", "ass", "ssa", "vtt")],
+		}
+
+	def getTranscodingUrl(self, item_id, media_source_id, defAudioIndex, defSubtitleIndex):
+		# Asks the server whether the receiver can play the item directly. Returns (url, play_session_id) when
+		# the server has to transcode, (None, play_session_id) for direct play and (None, None) on any error.
+		headers = self.constructHeaders()
+		url = f"{self.server_root}/Items/{item_id}/PlaybackInfo?UserId={self.user_id}&MediaSourceId={media_source_id}&IsPlayback=true&AutoOpenLiveStream=true"
+		if defAudioIndex > -1:
+			url += f"&AudioStreamIndex={defAudioIndex}"
+		if defSubtitleIndex > -1:
+			url += f"&SubtitleStreamIndex={defSubtitleIndex}"
+		try:
+			response = post(url, headers=headers, json={"DeviceProfile": self.getDeviceProfile()}, timeout=(config.plugins.e2jellyfinclient.con_timeout.value, config.plugins.e2jellyfinclient.read_con_timeout.value))
+			json = loads(response.content)
+			play_session_id = json.get("PlaySessionId")
+			media_source = next((ms for ms in json.get("MediaSources", []) if ms.get("Id") == media_source_id), None)
+			if media_source and not media_source.get("SupportsDirectPlay") and media_source.get("TranscodingUrl"):
+				return f"{self.server_root}{media_source.get('TranscodingUrl')}", play_session_id
+			return None, play_session_id
+		except Exception as ex:
+			print(f"[E2JellyfinClient][EmbyRestClient][getTranscodingUrl] {ex}")
+			return None, None
+
 	def getPlaySession(self, item_id, media_source_id, defAudioIndex, defSubtitleIndex):
 		headers = self.constructHeaders()
 		url = f"{self.server_root}/Items/{item_id}/PlaybackInfo?UserId={self.user_id}&IsPlayback=true&AutoOpenLiveStream=true&AudioStreamIndex={defAudioIndex}&SubtitleStreamIndex={defSubtitleIndex}&MediaSourceId={media_source_id}"
